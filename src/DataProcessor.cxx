@@ -97,9 +97,6 @@ void DataProcessor::Process() {
         histTimePMTID[i]->Scale(tempNormFactor, "nosw2");
     }
     
-    //ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Minimize");
-    ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Simplex");
-    ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
 
     for (int i = 0; i < this->pmtBinCount; ++i) {
         for (int j = 0; j < this->timeBinCount; ++j) {
@@ -107,6 +104,10 @@ void DataProcessor::Process() {
                 this->histE[i][j]->SetBinContent(k+1, (this->histTimePMTID[k]->GetBinContent(i+1,j+1)));
             }
 
+            /*
+            //ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Minimize");
+            ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Simplex");
+            ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
             std::unique_ptr<TF1> func(new TF1("func", combinedFunc, 100, this->maxEnergy, 7));
             //std::unique_ptr<TF1> func(new TF1("func", "gaus(0)+pol3(3)", 0, MAX_ENERGY));
             func->SetParameters(this->histE[i][j]->GetMaximum(), 500, 150, 0, 0, 0, 0); // 초기 파라미터 추정
@@ -121,6 +122,7 @@ void DataProcessor::Process() {
             std::cout << "Chi2: " << chi2 << std::endl;
             std::cout << "NDF (Number of Degrees of Freedom): " << ndf << std::endl;
             std::cout << "Chi2/NDF: " << chi2 / ndf << std::endl;
+            */
         }
     }
 }

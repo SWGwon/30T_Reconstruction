@@ -3,6 +3,7 @@ project(Reconstruction)
 
 # Set C++ Standard
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Find ROOT (assumes ROOT is installed and environment is set)
 find_package(ROOT REQUIRED)
@@ -17,11 +18,15 @@ link_directories(${RATROOT}/lib)
 
 include_directories(include)
 
+find_library(READLINE_LIBRARY readline)
+include_directories(${READLINE_INCLUDE_DIR})
+
 # Define sources
 set(SOURCES
     src/FileReader.cxx
     src/DataProcessor.cxx
     src/CommandLineParser.cxx
+    src/HistogramFitter.cxx
     src/main.cxx
     )
 
@@ -29,4 +34,4 @@ set(SOURCES
 add_executable(Reconstruction ${SOURCES})
 
 # Link ROOT libraries
-target_link_libraries(Reconstruction ${ROOT_LIBRARIES} RATEvent)
+target_link_libraries(Reconstruction ${ROOT_LIBRARIES} RATEvent ${READLINE_LIBRARY})
