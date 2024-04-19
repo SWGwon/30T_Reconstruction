@@ -6,53 +6,53 @@
 #include <vector>
 #include <dirent.h>
 
+#include <TCanvas.h>
+
 #include "FileReader.hxx"
 #include "DataProcessor.hxx"
+#include "HistogramFitter.hxx"
 
-void processData() {
-    char* filename = readline("Enter input file path: ");
-    if (!filename) return;
+void printHeader(const std::string& title) {
+    std::cout << "\n=== " << title << " ===\n";
+}
 
-    if (strlen(filename) > 0) {
-        add_history(filename);
+void printMenu() {
+    printHeader("Main Menu");
+    std::cout << "Choose an option:\n"
+              << "1. Data processing: Make 2D and 1D histograms from data and save them as a root file\n"
+              << "2. Fitting histograms: Fit 1D histograms from a processed data root file\n"
+              << "3. Exit\n";
+}
+
+int getChoice() {
+    int choice;
+    std::cout << "Enter your choice: ";
+    while (!(std::cin >> choice)) {
+        std::cin.clear(); // clear input buffer to restore cin to a usable state
+        std::cin.ignore(INT_MAX, '\n'); // ignore last input
+        std::cout << "Invalid input. Please enter a number between 1 and 3.\n";
+        std::cout << "Enter your choice: ";
     }
+    return choice;
+}
 
-    std::cout << "You entered: " << filename << std::endl;
-    FileReader reader(filename);
-    free(filename);
-    if (reader.open()) {
-        TTree* tree = reader.getTree("output");
-        if (tree) {
-            DataProcessor processor(tree);
-            int entryDenominator;
-            std::cout << "Enter entry denominator: ";
-            std::cin >> entryDenominator;
-            processor.SetEntryDenominator(entryDenominator);
-            processor.Process();
-            std::string outputFile;
-            std::cout << "Enter output file path: ";
-            std::cin >> outputFile;
-            processor.SaveResults(outputFile);
-        } else {
-            std::cout << "Failed to retrieve tree from file." << std::endl;
+char* GetNonEmptyInput(const char* prompt) {
+    char* input;
+    while (true) {
+        input = readline(prompt);
+        if (!input) {  // NULL 반환은 EOF(입력 종료)를 의미
+            std::cout << "No input received. Exiting program." << std::endl;
+            exit(1);  // 프로그램 종료
         }
-    } else {
-        std::cout << "Failed to open file." << std::endl;
+        if (strlen(input) > 0) {  // 입력된 문자열의 길이가 0보다 크면 유효
+            return input;
+        }
+        std::cout << "Empty input is not allowed. Please try again." << std::endl;
+        free(input);  // 사용하지 않는 입력 메모리 해제
     }
 }
 
-void fitHistograms() {
-    std::string filename;
-    std::cout << "Enter input file path for fitting: ";
-    std::cin >> filename;
-    std::unique_ptr<TFile> file(new TFile(filename.c_str(), "READ"));
-    if (!file->IsZombie()) {
-        // Histogram fitting logic would go here.
-        std::cout << "Histogram fitting completed successfully." << std::endl;
-    } else {
-        std::cout << "Failed to open file for fitting." << std::endl;
-    }
-}
+
 
 std::vector<std::string> listFiles(const std::string& prefix) {
     std::vector<std::string> matches;
@@ -101,20 +101,76 @@ char** filepathCompleter(const char* text, int start, int end) {
     return rl_completion_matches(text, completionGenerator);
 }
 
+void processData() {
+    printHeader("Data Processing");
+    char* filename = GetNonEmptyInput("Enter input file path: ");
+    add_history(filename);
+    FileReader reader(filename);
+    free(filename);
+
+    if (reader.open()) {
+        TTree* tree = reader.getTree("output");
+        if (tree) {
+            DataProcessor processor(tree);
+
+            char* entryDenominator = GetNonEmptyInput("Enter entry denominator: ");
+            add_history(entryDenominator);
+            processor.SetEntryDenominator(std::stoi(entryDenominator));
+            free(entryDenominator);
+
+            std::cout << "Start processing..." << std::endl;
+            processor.Process();
+            std::cout << "Done processing data." << std::endl;
+
+            char* outputFile = GetNonEmptyInput("Enter output file path: ");
+            add_history(outputFile);
+            processor.SaveResults(outputFile);
+            free(outputFile);
+
+        } else {
+            std::cout << "Failed to retrieve tree from file." << std::endl;
+        }
+    } else {
+        std::cout << "Failed to open file." << std::endl;
+    }
+}
+
+void fitHistograms() {
+    printHeader("Histogram Fitting");
+    char* filename = GetNonEmptyInput("Enter processed input file path for fitting: ");
+    add_history(filename);
+    std::unique_ptr<TFile> file(new TFile(filename, "READ"));
+    free(filename);
+
+    if (!file->IsZombie()) {
+        std::cout << "Setting histograms...";
+        DataProcessor processor(nullptr);
+        HistogramFitter histogramFitter;
+        histogramFitter.SetFile(file.get());
+        histogramFitter.SetHistogramAxis(processor.GetPmtBinCount(), processor.GetTimeBinCount());
+        histogramFitter.InitializeHistograms();
+        histogramFitter->SetHistograms();
+        std::cout << "done";
+
+        std::cout << "Start fitting..." << std::endl;
+
+
+        // Histogram fitting logic would go here.
+        std::cout << "Histogram fitting completed successfully." << std::endl;
+    } else {
+        std::cout << "Failed to open file for fitting." << std::endl;
+    }
+}
+
 
 int main() {
     rl_attempted_completion_function = filepathCompleter;
     rl_completion_append_character = '\0';
-    rl_completion_suppress_append = 1;
-    bool running = true;
-    int choice;
 
-    while (running) {
-        std::cout << "Choose an option:" << std::endl;
-        std::cout << "1. Data processing: making 2D and 1D histograms from data and saving the histograms as root file" << std::endl;
-        std::cout << "2. Fitting histograms: fitting 1D histograms from processed data root file" << std::endl;
-        std::cout << "3. Exit" << std::endl;
-        std::cin >> choice;
+    while (true) {
+        printMenu();
+        int choice = getChoice();
+
         switch (choice) {
             case 1:
                 processData();
@@ -123,9 +179,10 @@ int main() {
                 fitHistograms();
                 break;
             case 3:
-                break;
+                std::cout << "Exiting program.\n";
+                return 0;
             default:
-                std::cout << "Invalid choice, please select a valid option." << std::endl;
+                std::cout << "Invalid option. Please try again.\n";
         }
     }
 

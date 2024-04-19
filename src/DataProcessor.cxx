@@ -34,6 +34,8 @@ Double_t combinedFunc(Double_t *x, Double_t *par) {
 DataProcessor::DataProcessor(TTree* tree) : tree(tree) {}
 
 void DataProcessor::Process() {
+    std::cout << "start processing..." << std::endl;
+    this->InitializeHistograms();
     int mcpdg; tree->SetBranchAddress("mcpdg", &mcpdg);
     double mcx; tree->SetBranchAddress("mcx", &mcx);
     double mcy; tree->SetBranchAddress("mcy", &mcy);
@@ -79,8 +81,8 @@ void DataProcessor::Process() {
     std::vector<double>* mcPEy = nullptr; tree->SetBranchAddress("mcPEy", &mcPEy);
     std::vector<double>* mcPEz = nullptr; tree->SetBranchAddress("mcPEz", &mcPEz);
 
-    Long64_t nEntries = tree->GetEntries()/this->entryDenominator;
-    for (Long64_t i = 0; i < nEntries; i++) {
+    int nEntries = tree->GetEntries()/this->entryDenominator;
+    for (int i = 0; i < nEntries; i++) {
         tree->GetEntry(i);
         PrintProgressBar(50, i / static_cast<double>(nEntries));
         int tempEnergyBin = mcke/(this->maxEnergy/this->energyBinCount);
@@ -128,19 +130,20 @@ void DataProcessor::Process() {
 }
 
 void DataProcessor::InitializeHistograms() {
+    std::cout << "Initializing histograms..." << std::endl;
     this->histE.resize(this->pmtBinCount);
     for (auto& row : this->histE) {
         row.resize(this->timeBinCount, nullptr);
     }
     for (int i = 0; i < this->pmtBinCount; ++i) {
         for (int j = 0; j < this->timeBinCount; ++j) {
-            histE[i][j] = new TH1D(Form("energy_dist_of_%d_%d",i,j), Form("energy_dist_of_%d_%d",i,j), this->energyBinCount,0,this->maxEnergy);
+            this->histE[i][j] = new TH1D(Form("energy_dist_of_%d_%d",i,j), Form("energy_dist_of_%d_%d",i,j), this->energyBinCount,0,this->maxEnergy);
         }
     }
 
     this->histTimePMTID.resize(this->energyBinCount);
     for (int i = 0; i < this->energyBinCount; ++i) {
-        histTimePMTID[i] = new TH2D(Form("histTimePMTID_%fGeV", i*0.1 + 0.1), Form("histTimePMTID_%fGeV;PMT ID;PE time", i*0.1 + 0.1), this->pmtBinCount,0,this->pmtBinCount, this->timeBinCount,0,this->timeBinCount);
+        this->histTimePMTID[i] = new TH2D(Form("histTimePMTID_%fGeV", i*0.1 + 0.1), Form("histTimePMTID_%fGeV;PMT ID;PE time", i*0.1 + 0.1), this->pmtBinCount,0,this->pmtBinCount, this->timeBinCount,0,this->timeBinCount);
     }
 
     this->histTimePMTIDAll = new TH2D("histTimePMTID", "histTimePMTID_all_energy;PMT ID;PE time", this->pmtBinCount,0,this->pmtBinCount, this->timeBinCount,0,this->timeBinCount);
