@@ -11,9 +11,8 @@ class HistogramFitter {
         ~HistogramFitter();
 
         void SetFile(TFile* inputFile) {this->inputFile = inputFile;};
-        bool fitHistogram(const char* formula, const char* options = "", double xMin = 0, double xMax = 0);
-        void printFitResults() const;
-
+        bool FitHistograms(TF1* func, const char* options = "", double xMin = 0, double xMax = 0);
+        void SaveResults(const std::string& filename);
         void SetHistogramAxis(int pmtBinCount, int timeBinCount);
         void InitializeHistograms();
         void SetHistograms();

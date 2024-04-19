@@ -41,7 +41,6 @@ class DataProcessor {
         std::vector<std::vector<TH1D*>> histE;
         std::vector<TH2D*> histTimePMTID;
         TH2D* histTimePMTIDAll;
-        TH2D* histTimePMTIDChi2;
 };
 
 #endif // DATAPROCESSOR_HXX

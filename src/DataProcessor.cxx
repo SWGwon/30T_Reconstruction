@@ -15,22 +15,6 @@
 #include <TMinuit.h>
 #include <Math/MinimizerOptions.h>
 
-Double_t combinedFunc(Double_t *x, Double_t *par) {
-    // 가우시안 파트
-    Double_t gauss = par[0] * exp(-0.5 * pow((x[0] - par[1])/par[2], 2));
-    // 3차 다항식 파트
-    Double_t poly3 = par[3] + par[4]*x[0] + par[5]*x[0]*x[0] + par[6]*x[0]*x[0]*x[0];
-
-    Double_t penalty = 0;
-    if (par[2] < 100 || par[2] > 200) {
-        penalty += 100 * (par[2] - 150)*(par[2] - 150); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
-    }
-    if (par[1] < 400 || par[1] > 600) {
-        penalty += 100 * (par[1] - 500)*(par[1] - 500); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
-    }
-    return gauss + poly3 + penalty; // 두 함수의 합 반환
-}
-
 DataProcessor::DataProcessor(TTree* tree) : tree(tree) {}
 
 void DataProcessor::Process() {
@@ -105,26 +89,6 @@ void DataProcessor::Process() {
             for (int k = 0; k < this->energyBinCount; ++k) {
                 this->histE[i][j]->SetBinContent(k+1, (this->histTimePMTID[k]->GetBinContent(i+1,j+1)));
             }
-
-            /*
-            //ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Minimize");
-            ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Simplex");
-            ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
-            std::unique_ptr<TF1> func(new TF1("func", combinedFunc, 100, this->maxEnergy, 7));
-            //std::unique_ptr<TF1> func(new TF1("func", "gaus(0)+pol3(3)", 0, MAX_ENERGY));
-            func->SetParameters(this->histE[i][j]->GetMaximum(), 500, 150, 0, 0, 0, 0); // 초기 파라미터 추정
-            func->SetParLimits(0, 0, this->histE[i][j]->GetMaximum());
-            //func->SetParLimits(2, 100, 200);
-            func->SetParNames("Amplitude", "Mean", "Sigma", "Const", "Linear", "Quadratic", "Cubic");
-            this->histE[i][j]->Fit(func.get(), "RSVQ");
-            double chi2 = func->GetChisquare();
-            double ndf = func->GetNDF();
-            this->histTimePMTIDChi2->SetBinContent(i+1, j+1, chi2/ndf);
-            std::cout << "i: " << i << ", j: " << j << std::endl;
-            std::cout << "Chi2: " << chi2 << std::endl;
-            std::cout << "NDF (Number of Degrees of Freedom): " << ndf << std::endl;
-            std::cout << "Chi2/NDF: " << chi2 / ndf << std::endl;
-            */
         }
     }
 }
@@ -137,17 +101,16 @@ void DataProcessor::InitializeHistograms() {
     }
     for (int i = 0; i < this->pmtBinCount; ++i) {
         for (int j = 0; j < this->timeBinCount; ++j) {
-            this->histE[i][j] = new TH1D(Form("energy_dist_of_%d_%d",i,j), Form("energy_dist_of_%d_%d",i,j), this->energyBinCount,0,this->maxEnergy);
+            this->histE[i][j] = new TH1D(Form("energy_dist_of_%d_%d",i,j), Form("energy_dist_of_%d_%d;incident mu- KE; #PE pmtid:%d, time:%dns",i,j,i+1,j), this->energyBinCount,0,this->maxEnergy);
         }
     }
 
     this->histTimePMTID.resize(this->energyBinCount);
     for (int i = 0; i < this->energyBinCount; ++i) {
-        this->histTimePMTID[i] = new TH2D(Form("histTimePMTID_%fGeV", i*0.1 + 0.1), Form("histTimePMTID_%fGeV;PMT ID;PE time", i*0.1 + 0.1), this->pmtBinCount,0,this->pmtBinCount, this->timeBinCount,0,this->timeBinCount);
+        this->histTimePMTID[i] = new TH2D(Form("histTimePMTID_%fGeV", i*4./this->energyBinCount + 0.1), Form("histTimePMTID_%fGeV;PMT ID;PE time", i*4./this->energyBinCount + 0.1), this->pmtBinCount,0,this->pmtBinCount, this->timeBinCount,0,this->timeBinCount);
     }
 
     this->histTimePMTIDAll = new TH2D("histTimePMTID", "histTimePMTID_all_energy;PMT ID;PE time", this->pmtBinCount,0,this->pmtBinCount, this->timeBinCount,0,this->timeBinCount);
-    this->histTimePMTIDChi2 = new TH2D("histTimePMTIDChi2", "histTimePMTIDChi2;PMT ID;PE time", this->pmtBinCount,0,this->pmtBinCount, this->timeBinCount,0,this->timeBinCount);
 }
 
 void DataProcessor::SaveResults(const std::string& filename) {
@@ -163,7 +126,6 @@ void DataProcessor::SaveResults(const std::string& filename) {
             this->histE[i][j]->Write();
         }
     }
-    this->histTimePMTIDChi2->Write();
 }
 
 void DataProcessor::PrintProgressBar(int width, double percentage) {

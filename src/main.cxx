@@ -12,6 +12,75 @@
 #include "DataProcessor.hxx"
 #include "HistogramFitter.hxx"
 
+Double_t combinedFunc(Double_t *x, Double_t *par) {
+    // 가우시안 파트
+    Double_t gauss = par[0] * exp(-0.5 * pow((x[0] - par[1])/par[2], 2));
+    // 3차 다항식 파트
+    Double_t poly3 = par[3] + par[4]*x[0] + par[5]*x[0]*x[0] + par[6]*x[0]*x[0]*x[0];
+
+    Double_t penalty = 0;
+    if (par[2] < 100 || par[2] > 200) {
+        penalty += 100 * (par[2] - 150)*(par[2] - 150); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
+    }
+    if (par[1] < 400 || par[1] > 600) {
+        penalty += 100 * (par[1] - 500)*(par[1] - 500); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
+    }
+    return gauss + poly3 + penalty; // 두 함수의 합 반환
+}
+
+Double_t combinedFunc2(Double_t *x, Double_t *par) {
+    Double_t gauss;
+    if (x[0] < 700) {
+        gauss = par[0] * exp(-0.5 * pow((x[0] - par[1])/par[2], 2));
+    } else {
+        gauss = 0;
+    }
+    Double_t penalty = 0;
+    if (par[2] < 100 || par[2] > 200) {
+        penalty += 100 * (par[2] - 150)*(par[2] - 150); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
+    }
+    if (par[1] < 400 || par[1] > 600) {
+        penalty += 100 * (par[1] - 500)*(par[1] - 500); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
+    }
+    if (par[4] < 0 || par[4] > 0.03) {
+        penalty += 100 * (par[4] - 0.03)*(par[4] - 0.03);
+    }
+
+    Double_t poly1;
+    if (x[0] > 700) {
+        poly1 = par[3] + par[4]*x[0];
+    } else {
+        poly1 = 0;
+    }
+
+    return gauss + poly1 + penalty; // 두 함수의 합 반환
+}
+
+Double_t combinedFunc3(Double_t *x, Double_t *par) {
+    Double_t gauss;
+    if (x[0] < 700) {
+        gauss = par[0] * exp(-0.5 * pow((x[0] - par[1])/par[2], 2));
+    } else {
+        gauss = 0;
+    }
+    Double_t penalty = 0;
+    if (par[2] < 100 || par[2] > 200) {
+        penalty += 100 * (par[2] - 150)*(par[2] - 150); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
+    }
+    if (par[1] < 400 || par[1] > 600) {
+        penalty += 100 * (par[1] - 500)*(par[1] - 500); // 예시 페널티, 범위를 벗어날수록 \(\chi^2\) 가 증가
+    }
+
+    Double_t poly1;
+    if (x[0] > 700) {
+        poly1 = par[3] + par[4]*x[0];
+    } else {
+        poly1 = 0;
+    }
+
+    return gauss + poly1 + penalty; // 두 함수의 합 반환
+}
+
 void printHeader(const std::string& title) {
     std::cout << "\n=== " << title << " ===\n";
 }
@@ -118,6 +187,7 @@ void processData() {
             processor.SetEntryDenominator(std::stoi(entryDenominator));
             free(entryDenominator);
 
+            processor.SetEnergyBinCount(200);
             std::cout << "Start processing..." << std::endl;
             processor.Process();
             std::cout << "Done processing data." << std::endl;
@@ -149,10 +219,19 @@ void fitHistograms() {
         histogramFitter.SetFile(file.get());
         histogramFitter.SetHistogramAxis(processor.GetPmtBinCount(), processor.GetTimeBinCount());
         histogramFitter.InitializeHistograms();
-        histogramFitter->SetHistograms();
-        std::cout << "done";
+        histogramFitter.SetHistograms();
+        std::cout << "done" << std::endl;
 
         std::cout << "Start fitting..." << std::endl;
+        //std::unique_ptr<TF1> func(new TF1("func", combinedFunc1, 100, processor.GetMaxEnergy(), 7));
+        std::unique_ptr<TF1> func(new TF1("func", combinedFunc2, 100, processor.GetMaxEnergy(), 5));
+        func->SetParLimits(4,0,1000);
+        histogramFitter.FitHistograms(func.get(),"",100,processor.GetMaxEnergy()-100);
+
+        char* outputFile = GetNonEmptyInput("Enter output file path: ");
+        add_history(outputFile);
+        histogramFitter.SaveResults(outputFile);
+        free(outputFile);
 
 
         // Histogram fitting logic would go here.
@@ -161,7 +240,6 @@ void fitHistograms() {
         std::cout << "Failed to open file for fitting." << std::endl;
     }
 }
-
 
 int main() {
     rl_attempted_completion_function = filepathCompleter;
