@@ -33,15 +33,15 @@ void HistogramFitter::SetHistograms() {
 
 bool HistogramFitter::FitHistograms(TF1* func, const char* options, double xMin, double xMax) {
     //ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Minimize");
-    ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Simplex");
-    ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
+    //ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2", "Simplex");
+    //ROOT::Math::MinimizerOptions::SetDefaultStrategy(2);
 
     for (int i = 0; i < this->pmtBinCount; ++i) {
         for (int j = 0; j < this->timeBinCount; ++j) {
-            func->SetParameters(this->histE[i][j]->GetMaximum(), 500, 150, 0, 0, 0, 0); // 초기 파라미터 추정
-            func->SetParLimits(0, 0, this->histE[i][j]->GetMaximum());
+            //func->SetParameters(this->histE[i][j]->GetMaximum(), 500, 150, 0, 0, 0, 0); // 초기 파라미터 추정
+            //func->SetParLimits(0, 0, this->histE[i][j]->GetMaximum());
             //func->SetParLimits(2, 100, 200);
-            func->SetParNames("Amplitude", "Mean", "Sigma", "Const", "Linear", "Quadratic", "Cubic");
+            //func->SetParNames("Amplitude", "Mean", "Sigma", "Const", "Linear", "Quadratic", "Cubic");
             this->histE[i][j]->Fit(func, "RSVQ");
             double chi2 = func->GetChisquare();
             double ndf = func->GetNDF();

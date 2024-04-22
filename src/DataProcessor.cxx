@@ -79,8 +79,8 @@ void DataProcessor::Process() {
 
     //normalize 2D histograms
     for (int i = 0; i < this->energyBinCount; ++i) {
-        double tempNormFactor = (double)histTimePMTID[i]->GetEntries()/histTimePMTIDAll->GetEntries();
-        histTimePMTID[i]->Scale(tempNormFactor, "nosw2");
+        if (histTimePMTID[i]->Integral() != 0)
+            histTimePMTID[i]->Scale(1./histTimePMTID[i]->Integral(), "nosw2");
     }
     
 
