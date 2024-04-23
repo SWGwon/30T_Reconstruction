@@ -18,7 +18,6 @@
 DataProcessor::DataProcessor(TTree* tree) : tree(tree) {}
 
 void DataProcessor::Process() {
-    std::cout << "start processing..." << std::endl;
     this->InitializeHistograms();
     int mcpdg; tree->SetBranchAddress("mcpdg", &mcpdg);
     double mcx; tree->SetBranchAddress("mcx", &mcx);
